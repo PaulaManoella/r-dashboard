@@ -1,0 +1,100 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(shiny)
+library(rmarkdown)
+
+# Definir o caminho do arquivo Excel
+caminho <- "C:/Users/pmano/OneDrive/Documentos/data_test.xlsx"
+
+
+# Ler o arquivo Excel e criar o dataframe data_test
+data_test <- read_excel(caminho)
+```
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+
+selectInput(
+  inputId = "municipio",
+  label = "Município",
+  choices = unique(data_test$Municipio)
+)
+
+actionButton("openDocument", "Abrir Relatório")
+downloadButton("downloadData", "Baixar Relatório")
+
+```
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+renderPlot({
+  filtered_data <- data_test %>% filter(Municipio == input$municipio)
+
+  # Calcular as médias das colunas numéricas após a filtragem
+  medias_filtered_data <- colMeans(filtered_data[, 2:ncol(filtered_data)])
+
+  # Criar dataframe para as médias filtradas
+  df_medias_filtradas <- data.frame(Questao = names(medias_filtered_data), Media = medias_filtered_data)
+
+  # Plotar o gráfico com os dados filtrados
+  p <- ggplot(df_medias_filtradas, aes(x = Questao, y = Media)) +
+    geom_bar(stat = "identity", fill = "skyblue") +
+    geom_text(aes(label = round(Media, 2)), vjust = -0.5) +
+    labs(title = paste("Média de Cada Questão -", input$municipio), x = "Questão", y = "Média") +
+    theme_minimal()
+
+  # Mostrar o gráfico no dashboard
+  print(p)
+  
+  ggsave("grafico_medias.png", plot = p, width = 8, height = 6)
+})
+
+#Gerando relatorio
+output$downloadData <- downloadHandler(
+  filename = function() {paste("relatorio_", input$municipio, ".pdf", sep = "")},
+  content = function(file) {rmarkdown::render("relatorio.Rmd", output_file = file)}
+)
+
+
+#output$openDocument <- knit(output = "relatorio.Rmd")
+observeEvent(input$openDocument, {output_file <- tempfile(fileext = ".pdf")
+  rmarkdown::render("relatorio.Rmd", output_format = "pdf_document", output_file = output_file)
+  browseURL(output_file)
+})
+
+```
+
+
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+```
+
+### Chart C
+
+```{r}
+
+```
+
