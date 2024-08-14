@@ -1,0 +1,196 @@
+MAIN.RMD
+
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+  
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(shiny)
+library(rmarkdown)
+library(googlesheets4)
+
+caminho <- "C:/Users/DIAVI/Documents/dashboard/data_test.xlsx"
+
+#base AVALIA
+dataSource <- "C:/Users/DIAVI/Documents/dashboard/Avalia2023.xlsx"
+dataBase <- read_excel(dataSource)
+
+```
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+
+selectInput(inputId="campus", 
+            choices = c("Todos" = "all", unique(dataBase$CAMPUS)), 
+            label="Campus")
+
+selectInput(
+  inputId = "uni_acad",
+  label = "Unidade Acadêmica",
+  choices = c("Todos" = "all", unique(dataBase$UND_ACAD))
+)
+
+
+actionButton("openDocument", "Abrir Relatório")
+downloadButton("downloadData", "Baixar Relatório")
+
+```
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+pivot_longer(cols = c())
+
+### Chart A
+
+```{r}
+plotOutput("chartA")
+
+output$chartA <- renderPlot({
+  dados_long <- dataBase
+  
+  if (input$uni_acad != "all"){
+    dados_long <- dados_long %>%
+      filter(UND_ACAD == input$uni_acad)
+  }
+  
+  dados_long <- dados_long %>%
+    pivot_longer(
+      cols = c(P111, P112, P113, P114, P115, P116, P117),
+      names_to = "Variavel",
+      values_to = "Valor"
+    )
+  
+  boxplotGraph <<-
+    ggplot(dados_long, aes(x = Variavel, y = Valor, fill = Variavel)) +
+    geom_boxplot() +
+    theme_minimal() +
+    labs(title = "Auto Avaliação Discente", x = "Variável", y = "Valor")
+  
+  print(boxplotGraph)
+})
+
+output$downloadData <- downloadHandler(
+  filename = function() {paste("relatorio_", input$municipio, ".pdf", sep = "")},
+  content = function(file) {rmarkdown::render("relatorio.Rmd", output_file = file, params = list(plot = output$chartA))}
+)
+
+#output$openDocument <- knit(output = "relatorio.Rmd")
+observeEvent(input$openDocument, {output_file <- tempfile(fileext = ".pdf")
+rmarkdown::render("relatorio.Rmd", output_format = "pdf_document", output_file = output_file)
+browseURL(output_file)})
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+  
+### Chart B
+  
+```{r}
+
+renderPlot({
+  
+  data <- dataBase
+  
+  if (input$campus != "all"){
+    data <- data %>% filter(CAMPUS == input$campus)
+  }
+  
+  colunas <- c("P111", "P112", "P113", "P114", "P115", "P116", "P117")
+
+  # Contar as frequências para cada coluna e armazenar em uma lista
+  contagensColunas <- lapply(colunas, function(coluna) table(data[[coluna]]))
+  
+  # Nomear os elementos da lista
+  names(contagensColunas) <- colunas
+  
+  # Converte a tabela em um vetor nomeado
+  vetorContagem <- as.vector(contagemColuna)
+  names(vetorContagem) <- names(contagemColuna)
+  
+  
+  # Converte em data frame para criar o gráfico
+  dfCont <- data.frame(P111 = as.numeric(names(vetorContagem)), cont = vetorContagem)
+
+  # Cria o gráfico
+  g <- ggplot(dfCont, aes(x = P111, y = cont)) +
+    geom_bar(stat = "identity")
+  
+  # Imprime o gráfico
+  print(g)
+ # ggsave("grafico_contagem.png", plot = g, width = 8, height = 6)
+})
+
+```
+
+### Chart C
+
+```{r}
+renderPlot({
+  filtered_data <- dataBase #%>% filter(campus == input$CAMPUS)
+  
+  # Calcular as médias das colunas numéricas após a filtragem
+  medias_filtered_data <- colMeans(filtered_data[, 9:15])
+
+  # Criar dataframe para as médias filtradas
+  df_medias_filtradas <- data.frame(Questao = names(medias_filtered_data), Media = medias_filtered_data)
+  print(df_medias_filtradas[])
+  print(mean(df_medias_filtradas$Media))
+  
+  # Plotar o gráfico com os dados filtrados
+  mediaGraph <<- ggplot(df_medias_filtradas, aes(x = Questao, y = Media)) +
+    geom_bar(stat = "identity", fill = "skyblue") +
+    geom_text(aes(label = round(Media, 3)), vjust = -0.5) +
+    labs(x = "Questão", y="") +
+    theme_minimal()
+  
+  # Mostrar o gráfico no dashboard
+  print(mediaGraph)
+})
+```
+
+
+
+
+####################################
+RELATORIO.RMD (PDF)
+
+---
+title: "pdf certification"
+output: pdf_document
+date: "2024-07-31"
+params:
+  plot:
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## Auto av discente
+
+```{r, echo = FALSE}
+library(ggplot2)
+library(shiny)
+
+print(boxplotGraph)
+```
+
+## Média Auto Avaliação Discente
+
+```{r, echo = FALSE}
+print(mediaGraph)
+```
