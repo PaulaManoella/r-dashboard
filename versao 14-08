@@ -1,4 +1,4 @@
-MAIN.RMD
+MAIN RMD 
 
 ---
 title: "Untitled"
@@ -108,29 +108,61 @@ renderPlot({
     data <- data %>% filter(CAMPUS == input$campus)
   }
   
-  colunas <- c("P111", "P112", "P113", "P114", "P115", "P116", "P117")
+  colsAvDisc <- c("P111", "P112", "P113", "P114", "P115", "P116", "P117")
+  colsDocente <- c()
 
   # Contar as frequências para cada coluna e armazenar em uma lista
-  contagensColunas <- lapply(colunas, function(coluna) table(data[[coluna]]))
+  contagensColunas <- lapply(colsAvDisc, function(coluna) table(data[[coluna]]))
+  contagensDoc <- lapply(data[, 16:31], table)
+  
+  print(contagensDoc)
   
   # Nomear os elementos da lista
-  names(contagensColunas) <- colunas
+  names(contagensColunas) <- colsAvDisc
   
-  # Converte a tabela em um vetor nomeado
-  vetorContagem <- as.vector(contagemColuna)
-  names(vetorContagem) <- names(contagemColuna)
+  alternativas <- c(1, 2, 3, 4)
   
+  #função calculo percentual
   
-  # Converte em data frame para criar o gráfico
-  dfCont <- data.frame(P111 = as.numeric(names(vetorContagem)), cont = vetorContagem)
-
-  # Cria o gráfico
-  g <- ggplot(dfCont, aes(x = P111, y = cont)) +
-    geom_bar(stat = "identity")
+  calculoPercent <- function(alternativas, vetorContagem){
+    somaContagem <- sapply(alternativas, function(valor) {
+      sum(sapply(vetorContagem, function(tabela){
+        if (as.character(valor) %in% names(tabela)){
+          return(tabela[as.character(valor)])
+        }
+        else {
+          return(0)
+        }
+      }), na.rm = TRUE)
+    })
+    
+    percentuais <- (somaContagem / sum(somaContagem)) * 100
+    
+    return(percentuais)
+  }
   
-  # Imprime o gráfico
-  print(g)
- # ggsave("grafico_contagem.png", plot = g, width = 8, height = 6)
+  print("teste funcao")
+  
+  percentDisc <- calculoPercent(alternativas, contagensColunas)
+  print(percentDisc)
+  percentDoc <- calculoPercent(alternativas, contagensDoc)
+  print(percentDoc)
+  
+  print("FIM TESTE")
+  
+  dfDiscente <- data.frame(
+  dimensao = rep("Auto Avaliação Discente", "Ação Docente", length(percentDisc)),
+  conceito = rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = length(percentDisc) / 4),
+  valores = c(percentDisc,percentDoc)
+)
+  
+  colunaAgrupada <<- ggplot(dfDiscente, aes( x=dimensao, y=valores, fill=conceito)) +
+    geom_bar(stat="identity", position = "dodge")+ 
+    geom_text(aes(label = round(valores,2)), vjust = -0.5, position = position_dodge(width = 0.9)) +
+    theme_minimal() +
+    labs(title = "Gráfico de Colunas Agrupadas", x = "Conceito", y = "Frequência")
+ 
+  print(colunaAgrupada)
 })
 
 ```
@@ -163,9 +195,7 @@ renderPlot({
 
 
 
-
-####################################
-RELATORIO.RMD (PDF)
+RELATORO RMD
 
 ---
 title: "pdf certification"
@@ -193,4 +223,11 @@ print(boxplotGraph)
 
 ```{r, echo = FALSE}
 print(mediaGraph)
+```
+
+
+## Coluna Agrupada
+
+```{r, echo = FALSE}
+print(colunaAgrupada)
 ```
