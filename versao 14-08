@@ -50,7 +50,6 @@ downloadButton("downloadData", "Baixar Relatório")
 
 Column {data-width=650}
 -----------------------------------------------------------------------
-pivot_longer(cols = c())
 
 ### Chart A
 
@@ -109,11 +108,11 @@ renderPlot({
   }
   
   colsAvDisc <- c("P111", "P112", "P113", "P114", "P115", "P116", "P117")
-  colsDocente <- c()
 
   # Contar as frequências para cada coluna e armazenar em uma lista
   contagensColunas <- lapply(colsAvDisc, function(coluna) table(data[[coluna]]))
   contagensDoc <- lapply(data[, 16:31], table)
+  contagensInfra <- lapply(data[, 32:35], table)
   
   print(contagensDoc)
   
@@ -147,13 +146,14 @@ renderPlot({
   print(percentDisc)
   percentDoc <- calculoPercent(alternativas, contagensDoc)
   print(percentDoc)
+  percentInfra <- calculoPercent(alternativas, contagensInfra)
   
   print("FIM TESTE")
   
   dfDiscente <- data.frame(
-  dimensao = rep("Auto Avaliação Discente", "Ação Docente", length(percentDisc)),
-  conceito = rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = length(percentDisc) / 4),
-  valores = c(percentDisc,percentDoc)
+  dimensao = rep(c("Auto Avaliação Discente", "Ação Docente", "Instalações Físicas"), each = length(percentDisc)),
+  conceito = rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = 3),
+  valores = c(percentDisc, percentDoc, percentInfra)
 )
   
   colunaAgrupada <<- ggplot(dfDiscente, aes( x=dimensao, y=valores, fill=conceito)) +
