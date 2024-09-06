@@ -1,0 +1,43 @@
+####TESTAR
+
+renderPlot({
+  
+  df <- data.frame(
+  ID = c(1, 2, 3),
+  mediap111 = c(3.63, 3.45, 3.29),
+  mediap112 = c(3.70, 3.80, 3.56),
+  mediap113 = c(3.59, 3.68, 3.46))
+
+# Transformar as colunas mediap em uma só, atribuindo a Dimensão "gestao didatica"
+  df_long <- df %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "Dimensao",
+                 values_to = "media") %>%
+    mutate(Dimensao = "Gestão Didática")
+  
+  # Criar outro data frame com novas colunas e valores, atribuindo a Dimensão "atitude profissional"
+  df2 <- data.frame(
+    ID = c(1, 2, 3),
+    mediap211 = c(4.00, 3.90, 3.80),
+    mediap212 = c(3.95, 4.10, 3.85),
+    mediap213 = c(4.20, 3.85, 3.75)
+  )
+  
+  df2_long <- df2 %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "Dimensao",
+                 values_to = "media") %>%
+    mutate(Dimensao = "Atitude Profissional")
+  
+  # Combinar os dois data frames
+  df_combined <- bind_rows(df_long, df2_long)
+  
+  # Visualizar o resultado
+  print(df_combined)
+  
+  ggplot(df_combined, aes(x = Dimensao, y = media)) +
+    geom_boxplot(outlier.color = "#B4B4B8", fill = "#288FB4") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    labs(title = "Distribuição das Dimensões", x = "Dimensão", y = "Media")
+})
