@@ -534,7 +534,7 @@ renderPlot({
     geom_bar(stat = "identity", fill = "#288FB4") +
     geom_text(aes(label = round(percentuais, 2)), vjust = -0.5, size=4.3) +
     scale_y_continuous(limits = c(0, 100)) +
-    labs(x=NULL, y="Percentual") +
+    labs(x=NULL, y="Percentual", subtitle="Percentual de Participação em Atividades Acadêmicas por Atividade (Discente)") +
     theme_minimal() +
     theme(panel.grid.major.x = element_blank(),
           axis.text.x = element_text(size=12.3),
@@ -544,6 +544,45 @@ renderPlot({
 ```
 
 ### Percentual Atividades Base Docente
+```{r}
+#Percentual de Participação em Atividades Acadêmicas por Atividade
+renderPlot({
+  
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$doc
+
+  intervalo_colunas <- data_filtered %>%
+    select(A:P)
+  
+  colunas_nomes <- colnames(intervalo_colunas)
+  
+  intervalo_colunas[intervalo_colunas == ""] <- 0
+  
+  contagem_colunas <- colSums(intervalo_colunas == 1, na.rm = TRUE)
+  
+  percentuais <- (contagem_colunas/nrow(data_filtered))*100
+  
+  df <- data.frame(percentual = percentuais,
+                   alternativas = colunas_nomes)
+  
+  atividadeDoc <<- ggplot(df, aes(x= alternativas, y=percentual, width=0.9)) +
+    geom_bar(stat = "identity", fill = "#288FB4") +
+    geom_text(aes(label = round(percentuais, 2)), vjust = -0.5, size=4.3) +
+    scale_y_continuous(limits = c(0, 100)) +
+    labs(x=NULL, y="Percentual", subtitle="Percentual de Participação em Atividades Acadêmicas por Atividade (Docente)") +
+    theme_minimal() +
+    theme(panel.grid.major.x = element_blank(),
+          axis.text.x = element_text(size=12.3),
+          axis.text.y = element_text(size=11))
+  print(atividadeDoc)
+})
+```
+
+
+
+
+
+
 
 base docente
 ================================================================
@@ -694,7 +733,7 @@ renderPlot({
   percentInfra <- calculoPercent(alternativas, contagemInfra)
   
   df <- data.frame(
-  subdimensoes = rep(c("Auto Avaliação Discente", "Ação Docente", "Instalações Físicas"), each = 4),
+  subdimensoes = rep(c("Avaliação da Turma", "Autoavaliação da Ação Docente", "Instalações Físicas"), each = 4),
   conceito = rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = 3),
   valores = c(percentDisc, percentDoc, percentInfra))
   
