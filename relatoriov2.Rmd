@@ -19,53 +19,48 @@ library(ggplot2)
 library(shiny)
 ```
 
-## Avaliação Geral das Dimensões
-
-```{r, echo = FALSE, fig.align = 'center', fig.width = 7.5, fig.height = 4}
-print(contagemDG)
-```
-
-```{r, echo = FALSE, fig.align = 'center', fig.width = 8.8, fig.height = 4.2}
+## Médias por Dimensão Discente e Docente
+```{r, echo = FALSE, fig.width = 8.3, fig.height = 3.5, fig.align = 'center'}
 print(mediaGeral)
+print(mediaGeralDoc)
 ```
 
+## Proporções de respostas dadas por Dimensão Discente e Docente
+```{r, echo = FALSE, fig.width = 8.3, fig.height = 3.5, fig.align = 'center'}
+print(contagemDG)
+print(contagemGeralDoc)
+```
+
+## Distribuição das Médias das Avaliações por Dimensão
 ```{r, echo = FALSE, fig.align = 'center', fig.width = 7, fig.height = 4.2}
 print(boxplotGeral)
 ```
 
-## Avaliação da Ação Docente
-```{r, echo = FALSE, fig.align = 'center', fig.width = 7.5, fig.height = 4}
-print(contagemDoc)
-```
-
-```{r, echo = FALSE, fig.align = 'center', fig.width = 8.8, fig.height = 4.2}
-print(mediasDoc)
-```
-
-```{r, echo = FALSE, fig.align = 'center', fig.width = 7}
-print(boxplotDoc)
-```
-
-## Disc e Doc Dimensoes Geral
-```{r, echo = FALSE, fig.width = 8.3, fig.height = 3.5, fig.align = 'center'}
-print(mediaGeral)
-print(mediaGeralDoc)
-
-```
-
-## Disc e Doc Medias Ação Docente
+## Médias por Subdimensão Ação Docente Discente e Docente
 ```{r, echo = FALSE, fig.width = 8.3, fig.height = 3.5, fig.align = 'center'}
 print(mediasDoc)
 print(mediasAutoavDoc)
 
 ```
 
-## Disc e Doc Medias 1.1
+## Proporções de respostas dadas por Subdimensão Ação Docente Discente e Docente
+```{r, echo = FALSE, fig.width = 7.5, fig.height = 3.5, fig.align = 'center'}
+print(contagemDoc)
+print(contagem21Doc)
+```
+
+## Distribuição das Médias das Avaliações por Subdimensão da Ação Docente
+```{r, echo = FALSE, fig.align = 'center', fig.width = 7}
+print(boxplotDoc)
+```
+
+## Médias dos itens relacionados à Autoavaliação Discente/Avaliação da Turma
 ```{r, echo = FALSE, fig.width = 8.3, fig.height = 3.5, fig.align = 'center'}
 print(mediasDisc)
 print(mediasAvTurma)
-
 ```
+
+## Proporções de respostas dadas aos itens relacionados à Autoavaliação Discente/Avaliação da Turma
 
 \newpage \switchtolandscape
 ## Disc e Doc Contagem 1.1
@@ -73,35 +68,18 @@ print(mediasAvTurma)
 print(contagemDisc)
 print(contagem11Doc)
 ```
-
 \switchtoportrait
-## Disc e Doc Contagem 2.1
-```{r, echo = FALSE, fig.width = 7.5, fig.height = 3.5, fig.align = 'center'}
-print(contagemDoc)
-print(contagem21Doc)
-```
 
-## Autoavaliação Discente
-```{r, echo = FALSE, fig.width = 11.85, fig.height = 3.5, fig.align = 'center'}
-print(contagemDisc)
-print(mediasDisc)
-
-```
-
+## Distribuição das Médias das Avaliações relacionadas à Autoavaliação Discente
 ```{r, echo = FALSE, fig.align = 'center', warning=FALSE, message=FALSE, fig.width = 7}
 print(boxplotDisc)
 ```
 
 \newpage \switchtolandscape
-
-## Percentual de Participação em Atividades Acadêmicas por Atividade (Discente)
+## Percentual de Participação em Atividades Acadêmicas por Atividade Discente/Docente
 ```{r, echo = FALSE, fig.width = 11.85, fig.height = 3.5, fig.align = 'center'}
 print(atividadeDisc)
-print(contagem11Doc)
+print(atividadeDoc)
 ```
-\switchtoportrait
 
-## Geral base docente
-```{r, echo = FALSE, fig.width = 7.5, fig.align = 'center'}
-print(contagemGeralDoc)
-```
+\switchtoportrait
