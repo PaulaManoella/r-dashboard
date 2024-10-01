@@ -1,0 +1,32 @@
+library(openxlsx)
+library(readxl)
+library(dplyr)
+
+dataSource <- "avalia_23-09.xlsx" 
+dataBase <- read_excel(dataSource)
+
+curso_input <- "Sistemas de Informação - Bacharelado"
+campus_input <- "Belém"
+
+filtered <- filter(dataBase, CURSO==curso_input, CAMPUS==campus_input)
+#filtered <- filter(dataBase, CAMPUS==campus_input)
+
+colunas <- filtered %>% select(2,3) %>% distinct(DISCIPLINA, DOCENTE)
+
+#criando tabela
+minha_tabela <- data.frame(
+  Disciplina = c(colunas$DISCIPLINA),
+  Docente = c(colunas$DOCENTE),
+  `Autoavaliação Discente` = rep(c(1), times=30),
+  check.names=FALSE
+)
+
+print(colunas)
+
+# for (disciplina in minha_tabela$Disciplina){
+#   media = colMeans(data[, 38:44])
+#   print(media)
+# }
+
+#salvando tabela
+write.xlsx(minha_tabela, file = "minha_tabela3.xlsx")
