@@ -3,34 +3,41 @@ library(readxl)
 library(dplyr)
 library(tidyr)
 
-dataSource <- "avalia.xlsx" 
+dataSource <- "avalia_23-09.xlsx" 
 dataBase <- read_excel(dataSource)
 
-curso_input <- "Sistemas De Informacao"
-campus_input <- "Belém"
+curso_input <- "Ciências Naturais - Licenciatura"
+campus_input <- "Breves"
 
 filtered <- filter(dataBase, CURSO==curso_input, CAMPUS==campus_input)
 
-colunas <- filtered %>% select(2,3) %>% distinct(DISCIPLINA, DOCENTE)
+colunas <- filtered %>% select(2,3, (37:43))
 
-cols_disc <- filtered %>% select(3,(40:46))
-
-print(cols_disc)
+cols_disc <- filtered %>% select(2,3,(37:63))
 
 medias <- cols_disc %>%
-  group_by(DISCIPLINA) %>%
-  summarise(media = mean(rowMeans(across(starts_with('P11')), na.rm = TRUE)))
-
-print(medias, n=27)
-
+  group_by(DISCIPLINA, DOCENTE) %>%
+  summarise(
+    autoavdisc = mean(rowMeans(across(starts_with('P11')), na.rm = TRUE)),
+    acaodocente = mean(rowMeans(across(starts_with('P2')), na.rm = TRUE)),
+    atitudeprofissional = mean(rowMeans(across(starts_with('P21')), na.rm = TRUE)),
+    gestaodidatica = mean(rowMeans(across(starts_with('P22')), na.rm = TRUE)),
+    processoav = mean(rowMeans(across(starts_with('P23')), na.rm = TRUE)),
+    instalacoesfisicas = mean(rowMeans(across(starts_with('P3')), na.rm = TRUE)),
+  )
 
 #criando tabela
 minha_tabela <- data.frame(
-  Disciplina = c(colunas$DISCIPLINA),
-  Docente = c(colunas$DOCENTE),
-#  `Autoavaliação Discente` = c(medias$media),
+  Disciplina = c(medias$DISCIPLINA),
+  Docente = c(medias$DOCENTE),
+  `Autoavaliação Discente` = c(round((medias$autoavdisc),2)),
+  `Ação Docente` = c(round((medias$acaodocente),2)),
+  `Atitude Profissional` = c(round((medias$atitudeprofissional),2)),
+  `Gestão Didática` = c(round((medias$gestaodidatica),2)),
+  `Processo Avaliativo` = c(round((medias$processoav),2)),
+  `Instalações Físicas` = c(round((medias$instalacoesfisicas),2)),
   check.names=FALSE
 )
 
 #salvando tabela
-write.xlsx(minha_tabela, file = "minha_tabela.xlsx")
+write.xlsx(minha_tabela, file = "medias_avalia.xlsx")
