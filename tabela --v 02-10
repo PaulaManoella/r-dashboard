@@ -1,0 +1,36 @@
+library(openxlsx)
+library(readxl)
+library(dplyr)
+library(tidyr)
+
+dataSource <- "avalia.xlsx" 
+dataBase <- read_excel(dataSource)
+
+curso_input <- "Sistemas De Informacao"
+campus_input <- "Belém"
+
+filtered <- filter(dataBase, CURSO==curso_input, CAMPUS==campus_input)
+
+colunas <- filtered %>% select(2,3) %>% distinct(DISCIPLINA, DOCENTE)
+
+cols_disc <- filtered %>% select(3,(40:46))
+
+print(cols_disc)
+
+medias <- cols_disc %>%
+  group_by(DISCIPLINA) %>%
+  summarise(media = mean(rowMeans(across(starts_with('P11')), na.rm = TRUE)))
+
+print(medias, n=27)
+
+
+#criando tabela
+minha_tabela <- data.frame(
+  Disciplina = c(colunas$DISCIPLINA),
+  Docente = c(colunas$DOCENTE),
+#  `Autoavaliação Discente` = c(medias$media),
+  check.names=FALSE
+)
+
+#salvando tabela
+write.xlsx(minha_tabela, file = "minha_tabela.xlsx")
