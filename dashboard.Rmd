@@ -1,0 +1,1280 @@
+---
+title: "AVALIA 2023.4"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(shiny)
+library(rmarkdown)
+library(reshape2)
+library(DT)
+
+#base discente
+dataSource <- "C:/Users/pmano/OneDrive/Documentos/avalia/avalia_23-09.xlsx" 
+baseDiscente <- read_excel(dataSource) 
+
+#base docente 
+sourceDocente <- "C:/Users/pmano/OneDrive/Documentos/avalia/avalia_docente_24-09.xlsx"
+baseDocente <- read_excel(sourceDocente)
+
+### FUNÇÕES
+
+#Cáculo Percentual
+calculoPercent <- function(alternativas, vetorContagem){
+  #   Esta função retorna um vetor com os percentuais das colunas passadas como parametro
+  #   Parametros:
+  #     alternativas (string): possiveis respostas do questionario que vao de 1 a 4
+  #     vetorContagem (int): vetor com a contagem da ocorrencia de cada possivel resposta nas colunas
+  #   Return:
+  #     int: percentual das respostas de 1 a 4
+  
+  somaContagem <- sapply(alternativas, function(valor) {
+    sum(sapply(vetorContagem, function(tabela){
+      if (as.character(valor) %in% names(tabela)){
+        return(tabela[as.character(valor)])
+      }
+      else {
+        return(0)
+      }
+    }), na.rm = TRUE)
+  })
+  
+  percentuais <- (somaContagem / sum(somaContagem)) * 100
+  
+  return(percentuais)
+}
+
+#Cálculo percentual por Questão para cada Alternativa (usado no grafico de percentual de respostas para cada item)
+percentPorItem <- function(contagem, alternativas) {
+  # Esta função retorna o percentual da ocorrencia de cada resposta para cada item do intervalo definido
+  # Parametros:
+  #   contagem (int): vetor com a ocorrencia de respostas
+  #   alternativas (string): respostas de 1 a 4
+  # Return:
+  #   int: percentual das respostas
+  percentQuestoes <- lapply(contagem, function(tabela) {
+    percentuais <- (tabela / sum(tabela)) * 100
+    
+    percentuaisCompletos <- sapply(alternativas, function(alt) {
+      if (as.character(alt) %in% names(percentuais)) {
+        return(percentuais[as.character(alt)])
+      } else {
+        return(0)
+      }
+    })
+    
+    return(percentuaisCompletos) 
+  })
+
+  df <- data.frame(percentQuestoes)
+  
+  dfLong <- reshape2::melt(df, varnames = "questoes", value.name = "valores")
+  
+  dfLong$conceito <- rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = ncol(df))
+  
+  return (dfLong)
+  
+}
+
+#Gráfico Contagem
+graficoContagem <- function(df, dimensao, conceito, valores, titulo){
+  # Esta função plota o gráfico de colunas agrupadas referente a contagem das respostas de 1 a 4
+  # Parametros:
+  #   df (dataframe): data frame com as colunas contendo as dimensoes, conceitos, valores para a plotagem do gráfico e o título 
+  #   dimensao (string): coluna do data frame contendo as dimensoes abordadas no gráfico
+  #   conceito (string): coluna do data frame contendo os conceitos abordados no gráfico
+  #   valores (float): coluna do data frame contendo os percentuais das perguntas abordadas no gráfico
+  #   titulo (string): titulo do gráfico
+  # Return:
+  #   plot: retorna o gráfico de colunas agrupadas
+  
+  graficoC <<- ggplot(df, aes(x=dimensao, y=valores, fill=conceito))+
+    geom_bar(stat="identity", position = position_dodge(width=1))+ 
+    scale_fill_manual(values = c ("#1D556F", "#288FB4", "#F0B775", "#FA360A")) +
+    geom_text(aes(label = round(valores,2)), vjust = -0.8, position = position_dodge(width = 0.9), size = 4, family = "sans", colour = "#494953") + 
+    theme_minimal() +
+    labs(x = NULL, y ="Percentual", title=titulo) + 
+    scale_y_continuous(limits = c(0,100)) + 
+    theme(panel.grid.major.x = element_blank()) +
+    theme(legend.position = "right", 
+          legend.title = element_blank(), 
+          legend.text = element_text(size=10),
+          axis.text.x = element_text(size=10.8),
+          axis.text.y = element_text(size=9.6),
+          axis.title.y = element_text(size=11.3),
+          plot.title = element_text(size=12.2, 
+                                    hjust = 0.5,
+                                    margin = margin(0,0,15,0)))
+  return(graficoC)
+}
+
+#Gráfico Média
+graficoMedia <- function(df, medias, dimensoes, titulo) {
+  # Esta função plota o gráfico de colunas referente as médias das questões abordadas
+  # Parametros:
+  #   df (dataframe): data frame com as colunas contendo os valores das médias, dimensoes e o titulo do gráfico plotado
+  #   medias (float): coluna do dataframe contendo os valores das médias das questoes abordadas no gráfico
+  #   dimensoes (string): coluna do data frame contendo as dimensoes abordadas no gráfico
+  #   titulo (string): titulo do gráfico
+  # Return:
+  #   plot: retorna o gráfico de colunas  
+  
+  graficoM <<- ggplot(df, aes(x= dimensoes, y=medias, width=0.6)) +
+    geom_bar(stat = "identity", fill = "#288FB4") +
+    geom_text(aes(label = round(medias, 2)), vjust = -0.5, size=4.3) +
+    labs(x=NULL, y=NULL, title=titulo) +
+    #  scale_y_continuous( limits = c(1,4), breaks = seq(1, 4, 0.5) )
+    scale_y_continuous(limits = c(0, 4)) +
+    theme_minimal() +
+    theme(panel.grid.major.x = element_blank(),
+          axis.text.x = element_text(size=12.3),
+          axis.text.y = element_text(size=11),
+          plot.title = element_text(size=12.5, 
+                                    hjust = 0.5,
+                                    margin = margin(0,0,20,0)),)
+  return(graficoM)
+}
+
+#Gráfico Boxplot
+graficoBoxplot <- function(df, media, dimensao, titulo, texto_x){
+  graficoB <<- ggplot(df, aes(x = dimensao, y = media)) +
+    scale_x_discrete(labels = texto_x) +
+    stat_boxplot(geom = "errorbar", width = 0.6) +
+    geom_boxplot(outlier.color = "#B4B4B8", fill = "#288FB4") +
+    theme_minimal() +
+    scale_y_continuous(limits = c(1,4)) +
+    theme(axis.text.x = element_text(size = 10.3),
+          plot.title = element_text(size=10.5, 
+                                    hjust = 0.5)) +
+    labs(x = NULL, y = "Média", title=titulo)
+  
+  return(graficoB)
+  
+}
+
+#Filtragem dos Dados
+filtered_data <- reactive({
+  # Esta função filtra a base de dados levando em consideração a escolha do Campus e do Curso
+  # Return:
+  #   list: retorna uma lista com as bases de dados do discente e docente
+  
+  baseDisc <- baseDiscente
+  baseDoc <- baseDocente
+  
+  if (input$campus != "all") {
+    baseDisc <- baseDisc %>% filter(CAMPUS == input$campus)
+    baseDoc <- baseDoc %>% filter(CAMPUS == input$campus)
+    
+    if (input$curso != "all") {
+      baseDisc <- baseDisc %>% filter(CURSO == input$curso)
+      baseDoc <- baseDoc %>% filter(CURSO == input$curso)
+    }
+  }
+  
+  list(disc = baseDisc, doc = baseDoc)
+})
+
+#Removendo Duplicatas (função usada no boxplot)
+valoresUnicos <- function(df, intervalo){
+  # Esta função seleciona apenas os valores únicos do intervalo (coluna(s)) passado com parametro considerando a coluna ID da base de dados
+  # Parametros:
+  #   df (dataframe): base de dados
+  #   intervalo (string): intervalo x:y das colunas da base de dados
+  # Return:
+  #   retorna a base de dados com os valores unicos das colunas
+  
+  df <- df %>%
+    select(ID, {{intervalo}})
+  
+  dfUnico <- df %>%
+    distinct(ID, across(everything()), .keep_all = TRUE)
+  
+  return(dfUnico)
+}
+
+```
+
+Sidebar {.sidebar}
+=====================================
+```{r}
+#caixa de seleção do CAMPUS e CURSO
+
+#definindo valores da coluna CAMPUS
+selectInput(
+  inputId="campus",
+  choices = c("Todos" = "all", sort(unique(baseDiscente$CAMPUS))),
+  label="Campus")
+
+#definindo valores da coluna CURSO
+selectInput(
+  inputId = "curso",
+  label = "Curso",
+  choices = c("Todos" = "all", sort(unique(baseDiscente$CURSO)))
+)
+
+#Atualizando os filtros de acordo com a opção selecionada do filtro anterior
+observeEvent(input$campus, {
+  if (input$campus == "all") {
+    updateSelectInput(
+      inputId = "curso",
+      choices = c("Todos" = "all", sort(unique(baseDiscente$CURSO)))
+    )} 
+  else {
+    cursosFiltrados <- unique(c(
+      baseDiscente %>%
+        filter(CAMPUS == input$campus) %>%
+        pull(CURSO),
+      baseDocente %>%
+        filter(CAMPUS == input$campus) %>%
+        pull(CURSO)
+    ))
+    
+    updateSelectInput(
+      inputId = "curso",
+      choices = c("Todos" = "all", sort(cursosFiltrados))
+    )
+  }
+})
+```
+
+```{r}
+#Baixando e Abrindo Relatório
+actionButton("openDocument", "Abrir Relatório")
+downloadButton("downloadData", "Baixar Relatório")
+
+#Baixando Relatório
+output$downloadData <- downloadHandler(
+  filename = function() {
+    #definindo o nome do arquivo e concatenando para que contenha CURSO e CAMPUS dinamico
+    paste("AVALIA 2023.4 ",input$curso," - ", input$campus, ".pdf", sep = "")
+  },
+  content = function(file) {
+    data_filtered <- filtered_data() 
+    data_filtered <- data_filtered$disc
+    #renderizando arquivo que gera o pdf
+    #passando parametros data(base de dados), campus e curso para serem usados/chamados no arquivo relatorio.Rmd
+    rmarkdown::render("relatorio.Rmd", 
+                      output_file = file, 
+                      params = list(data = data_filtered,
+                                    campus = input$campus,
+                                    curso = input$curso))}
+)
+
+#Abrindo Relatório no Navegador
+observeEvent(input$openDocument, {
+  output_file <- tempfile(fileext = ".pdf")
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$disc
+  
+  rmarkdown::render("relatorio.Rmd", 
+                    output_format = "pdf_document", 
+                    output_file = output_file, 
+                    params = list(data = data_filtered,
+                                  campus = input$campus,
+                                  curso = input$curso))
+  # Abrindo o arquivo PDF gerado
+  browseURL(output_file)})
+```
+
+
+Dimensões Geral
+=====================================  
+
+Column {data-width=600}
+-------------------------------------
+
+### Proporções de respostas dadas por Dimensão
+```{r}
+renderPlot({
+  #filtrando base de dados
+  data_filtered <- filtered_data()
+  
+  #selecionando base de dados discente
+  data_filtered <- data_filtered$disc
+  
+  # ocorrencia de cada resposta (1,2,3 e 4) para cada coluna do intervalo selecionado em cada variável
+  # os números representam os indices das colunas na base de dados
+  contagensDisc <- lapply(data_filtered[, 37:43], table)
+  contagensDoc <- lapply(data_filtered[, 44:59], table)
+  contagensInfra <- lapply(data_filtered[, 60:63], table)
+  
+  alternativas <- c(1, 2, 3, 4)
+  
+  #calcula o percentual de cada resposta para cada dimensao em cada variável
+  percentDisc <- calculoPercent(alternativas, contagensDisc)
+  percentDoc <- calculoPercent(alternativas, contagensDoc)
+  percentInfra <- calculoPercent(alternativas, contagensInfra)
+  
+  #criando dataframe contendo as dimensoes, os conceitos das respostas e os valores dos percentuais
+  df <- data.frame(
+    dimensao = rep(c("Autoavaliação Discente", "Ação Docente", "Instalações Físicas"), each = length(percentDisc)),
+    conceito = rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = 3),
+    valores = c(percentDisc, percentDoc, percentInfra))
+  
+  #definindo a ordem correta das dimensoes
+  df$dimensao <- factor(df$dimensao, levels = c("Autoavaliação Discente", "Ação Docente", "Instalações Físicas"))
+  
+  #definindo a ordem correta dos conceitos
+  df$conceito <- factor(df$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente"))
+  
+  #ordenando para que os percentuais fiquem de acordo com o conceito e a dimensao
+  df <- df[order(df$dimensao, df$conceito), ]
+  
+  #gerando e printando gráfico (colunas agrupadas) do percentual
+  contagemDG <<-  graficoContagem(df, df$dimensao, df$conceito, df$valores, "Figura 3 - Proporções de respostas dadas por Dimensão (Discente)")
+  print(contagemDG)
+})
+```
+
+
+Column {data-width=400}
+-------------------------------------
+### Médias por Dimensão
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <-data$disc
+  
+  #calculando a média dos valores do intervalo de colunas definido em cada variável
+  mediasAvDiscente <- mean(unlist(cols22 <- data %>%
+                                    select(P111:P117)), na.rm=TRUE)
+  mediasAcaoDocente <- mean(unlist(cols22 <- data %>%
+                                     select(P211:P234)), na.rm=TRUE)
+  mediasInfra <- mean(unlist(cols22 <- data %>%
+                               select(P311:P314)), na.rm=TRUE)
+  
+  #criando dataframe com os valores das medias de cada dimensao e o nome das dimensoes
+  df <- data.frame(media = c(mediasAvDiscente, mediasAcaoDocente, mediasInfra),
+                   dimensoes = c("Autoavaliação Discente", "Ação Docente", "Instalações Físicas"))
+  
+  #definindo a ordem correta das dimensoes
+  df$dimensoes <- factor(df$dimensoes, levels = c("Autoavaliação Discente", "Ação Docente", "Instalações Físicas"))
+  
+  #gerando e printando o gráfico (colunas) de médias
+  mediaGeral <<- graficoMedia(df, df$media, df$dimensoes, "Figura 1 - Médias por dimensão (Discente)")
+  print(mediaGeral)
+})
+```   
+
+### boxplot das medias
+```{r}
+
+renderPlot({
+  
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$disc
+  
+  #extraindo somente os valores unicos das colunas no intervalo definido em cada variável
+  unicosDisc <- valoresUnicos(data_filtered, mediap111:mediap117)
+  unicosDoc <- valoresUnicos(data_filtered, mediap211:mediap234)
+  unicosInfra <- valoresUnicos(data_filtered, mediap311:mediap314)
+  
+#   as variavies 'long_[...]' contem a seguinte estrutura: ID | dimensao | media ,onde
+#   ID é a coluna ID na base de dados, dimensão (Autoavaliação Discente, Ação Docente ou Instalações Físicas) e media são as medias para o boxplot
+  
+  long_disc <- unicosDisc %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "dimensao",
+                 values_to = "media") %>%
+    mutate(dimensao = "Autoavaliação Discente")
+  
+  long_doc <- unicosDoc %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "dimensao",
+                 values_to = "media") %>%
+    mutate(dimensao = "Ação Docente")
+  
+  long_infra <- unicosInfra %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "dimensao",
+                 values_to = "media") %>%
+    mutate(dimensao = "Instalações Físicas")
+  
+  #combina as variaveis 'long_[...]' em um unico dataframe com a seguinte estrutura: ID | dimensao | media
+  df_dimensoes <- bind_rows(long_disc, long_doc, long_infra)
+  
+  #definindo a ordem correta das dimensoes
+  df_dimensoes$dimensao <- factor(df_dimensoes$dimensao, 
+                                  levels = c("Autoavaliação Discente", "Ação Docente", "Instalações Físicas"))
+  
+  #gerando e printando o boxplot
+  boxplotGeral <<- graficoBoxplot(df_dimensoes, media, dimensao, "Figura 5 - Distribuição das Médias das Avaliações das Turmas/Docente por Dimensão", c("Autoavaliação Discente","Ação Docente","Instalações Físicas"))
+  print(boxplotGeral)
+})
+```
+
+
+Autoavaliação Discente {data-orientation=rows}
+=====================================     
+
+Row {data-height=500}
+------------------------------------
+
+### Proporções de respostas dadas aos itens relacionados à Autoavaliação Discente
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  
+  contagem <- lapply(data[, 37:43], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  #chamando que calcula o percetual de cada resposta para cada item
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  #dataframe com os itens avaliados, conceitos e valores dos percentuais
+  dfDisc <- data.frame(
+    questoes = rep(c("1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  #reordenando os conceitos de exc-ins
+  dfDisc <- dfDisc[order(dfDisc$questoes, dfDisc$conceito), ]
+  
+  #gerando e printando gráfico (colunas agrupadas) da contagem para cada item
+  contagemDisc <<- graficoContagem(dfDisc, dfDisc$questoes, dfDisc$conceito, dfDisc$valores, "Figura 13 – Proporções de respostas dadas aos itens relacionados à Autoavaliação Discente")
+  print(contagemDisc)
+  
+})
+```
+
+Row {data-height=500}
+-------------------------------------
+
+### Médias dos itens relacionados à Autoavaliação Discente
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  mediasDiscente <- colMeans(data[, 37:43])
+  
+  df <- data.frame(medias = mediasDiscente,
+                   questoes = c("1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7"))
+  mediasDisc <<- graficoMedia(df, df$medias, df$questoes, "Figura 11 – Médias dos itens relacionados à Autoavaliação Discente")
+  print(mediasDisc)
+})
+```   
+
+
+### Boxplot Discente
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+suppressWarnings({
+  renderPlot({
+    data_filtered <- filtered_data()
+    data_filtered <- data_filtered$disc
+    
+    data_filtered <- valoresUnicos(data_filtered, mediap111:mediap117)
+    
+    data_long <- data_filtered %>%
+      pivot_longer(cols = starts_with("mediap"),
+                   names_to = "dimensao",
+                   values_to = "media")
+    
+    boxplotDisc <<- graficoBoxplot(data_long, media, dimensao, "Figura 15 – Distribuição das Médias das Avaliações das Turmas/Docentes por Item relacionado à 
+           Autoavaliação Discente", c("mediap111" = "1.1.1",
+                                      "mediap112" = "1.1.2",
+                                      "mediap113" = "1.1.3",
+                                      "mediap114" = "1.1.4",
+                                      "mediap115" = "1.1.5",
+                                      "mediap116" = "1.1.6",
+                                      "mediap117" = "1.1.7"))
+    print(boxplotDisc)
+  })
+})
+```
+
+
+Avaliação Ação Docente {data-orientation=rows}
+=====================================     
+
+Row {data-height=600}
+-------------------------------------
+
+### Proporções de respostas por Subdimensão da Avaliação da Ação Docente
+```{r}
+renderPlot({
+  
+  data <- filtered_data()
+  data <- data$disc
+  
+  contagem21 <- lapply(data[, 44:47], table)
+  contagem22 <- lapply(data[, 48:55], table)
+  contagem23 <- lapply(data[, 56:59], table)
+  
+  alternativas <- c(1, 2, 3, 4)
+  
+  dfDoc <- data.frame(
+    subdimensoes = rep(c("Atitude Profissional", "Gestão Didática", "Processo Avaliativo"), each = 4),
+    conceito = rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = 3),
+    valores = c(
+      calculoPercent(alternativas, contagem21),
+      calculoPercent(alternativas, contagem22),
+      calculoPercent(alternativas, contagem23)
+    )
+  )
+  
+  # Reordenar o 'conceito'
+  dfDoc$conceito <- factor(dfDoc$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente"))
+  
+  # Ordenar o dataframe para que os valores sejam alinhados corretamente com os conceitos
+  dfDoc <- dfDoc[order(dfDoc$subdimensoes, dfDoc$conceito), ]
+  
+  contagemDoc <<- graficoContagem(dfDoc, dfDoc$subdimensoes, dfDoc$conceito, dfDoc$valores, "Figura 8 – Proporções de respostas dadas por Subdimensão da Avaliação da Ação Docente")
+  print(contagemDoc)
+})
+```
+
+Row {data-height=400}
+-------------------------------------
+
+### Médias por Subdimensão da Avaliação da Ação Docente
+```{r}
+renderPlot({
+  data <- filtered_data()      
+  data <- data$disc
+  
+  medias21 <- mean(unlist(cols22 <- data %>%
+                            select(P211:P214)), na.rm=TRUE)
+  medias22 <- mean(unlist(cols22 <- data %>%
+                            select(P221:P228)), na.rm=TRUE)
+  medias23 <- mean(unlist(cols22 <- data %>%
+                            select(P231:P234)), na.rm=TRUE)
+  
+  df <- data.frame(medias = c(medias21, medias22, medias23),
+                   subdimensoes = c("Atitude Profissional", "Gestão Didática", "Processo Avaliativo"))
+  mediasDoc <<- graficoMedia(df, df$medias, df$subdimensoes, "Figura 6 - Médias por Subdimensão da Avaliação da Ação Docente")
+  print(mediasDoc)
+})
+```   
+
+### Boxplot Médias Avaliação Docente
+```{r}
+suppressWarnings({ 
+  renderPlot({
+    data_filtered <- filtered_data()
+    data_filtered <- data_filtered$disc
+    
+    unicos21 <- valoresUnicos(data_filtered, mediap211:mediap214)
+    unicos22 <- valoresUnicos(data_filtered, mediap221:mediap228)
+    unicos23 <- valoresUnicos(data_filtered, mediap231:mediap234)
+    
+    long_21 <- unicos21 %>%
+      pivot_longer(cols = starts_with("mediap"),
+                   names_to = "dimensao",
+                   values_to = "media") %>%
+      mutate(dimensao = "Atitude Profissional")
+    
+    long_22 <- unicos22 %>%
+      pivot_longer(cols = starts_with("mediap"),
+                   names_to = "dimensao",
+                   values_to = "media") %>%
+      mutate(dimensao = "Gestão Didática")
+    
+    long_23 <- unicos23 %>%
+      pivot_longer(cols = starts_with("mediap"),
+                   names_to = "dimensao",
+                   values_to = "media") %>%
+      mutate(dimensao = "Processo Avaliativo")
+    
+    df_mesclado <- bind_rows(long_21, long_22, long_23)
+    
+    boxplotDoc <<- graficoBoxplot(df_mesclado, media, dimensao, "Figura 10 – Distribuição das Médias das Avaliações das Turmas/Docentes por Subdimensão da Ação
+Docente", c("Atitude Profissional", "Gestão Didática", "Processo Avaliativo"))
+    print(boxplotDoc)
+  })
+})
+```
+
+
+Percentual Atividades Academicas 
+================================================================
+Row {data-height=500}
+-------------------------------------
+
+### Percentual Atividades Base Discente
+```{r}
+#Percentual de Participação em Atividades Acadêmicas por Atividade
+renderPlot({
+  
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$disc
+  
+  intervalo_colunas <- data_filtered %>%
+    select(A:R)
+  
+  #armazenando o nome das colunas 
+  colunas_nomes <- colnames(intervalo_colunas)
+  
+  #substitui as células vazias por 0
+  intervalo_colunas[intervalo_colunas == ""] <- 0
+  
+  #conta a ocorrencia de 1 em cada coluna
+  contagem_colunas <- colSums(intervalo_colunas == 1, na.rm = TRUE)
+  
+  #calcula o percentual da contagem de cada coluna
+  percentuais <- (contagem_colunas/nrow(data_filtered))*100
+  
+  df <- data.frame(percentual = percentuais,
+                   alternativas = colunas_nomes)
+  
+  atividadeDisc <<- ggplot(df, aes(x= alternativas, y=percentual, width=0.9)) +
+    geom_bar(stat = "identity", fill = "#288FB4") +
+    geom_text(aes(label = round(percentuais, 2)), vjust = -0.5, size=4.3) +
+    scale_y_continuous(limits = c(0, 100)) +
+    labs(x=NULL, y="Percentual", title="Figura 36 - Percentual de Participação em Atividades Acadêmicas por Atividade (Discente)") +
+    theme_minimal() +
+    theme(panel.grid.major.x = element_blank(),
+          axis.text.x = element_text(size=12.3),
+          axis.text.y = element_text(size=11),
+          plot.title = element_text(size=13.5, hjust = 0.5))
+  print(atividadeDisc)
+})
+```
+
+### Percentual Atividades Base Docente
+```{r}
+#Percentual de Participação em Atividades Acadêmicas por Atividade
+renderPlot({
+  
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$doc
+  
+  intervalo_colunas <- data_filtered %>%
+    select(A:P)
+  
+  colunas_nomes <- colnames(intervalo_colunas)
+  
+  intervalo_colunas[intervalo_colunas == ""] <- 0
+  
+  contagem_colunas <- colSums(intervalo_colunas == 1, na.rm = TRUE)
+  
+  percentuais <- (contagem_colunas/nrow(data_filtered))*100
+  
+  df <- data.frame(percentual = percentuais,
+                   alternativas = colunas_nomes)
+  
+  atividadeDoc <<- ggplot(df, aes(x= alternativas, y=percentual, width=0.9)) +
+    geom_bar(stat = "identity", fill = "#288FB4") +
+    geom_text(aes(label = round(percentuais, 2)), vjust = -0.5, size=4.3) +
+    scale_y_continuous(limits = c(0, 100)) +
+    labs(x=NULL, y="Percentual", title="Figura 37 – Percentual de Participação em Atividades Acadêmicas por Atividade (Docente)") +
+    theme_minimal() +
+    theme(panel.grid.major.x = element_blank(),
+          axis.text.x = element_text(size=12.3),
+          axis.text.y = element_text(size=11),
+          plot.title = element_text(size=13.5, hjust = 0.5))
+  print(atividadeDoc)
+})
+```
+
+
+
+
+base docente
+================================================================
+Column {data-width=600}
+-------------------------------------
+### Médias dos itens relacionados à Avaliação da Turma 1.1
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  mediasAvTurma <- colMeans(data[, 10:16])
+  
+  df <- data.frame(medias = mediasAvTurma,
+                   questoes = c("1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7"))
+  
+  mediasAvTurma <<- graficoMedia(df, df$medias, df$questoes, "Figura 12 – Médias dos itens relacionados à Avaliação da Turma")
+  print(mediasAvTurma)
+})
+```
+
+### Médias dos itens relacionados à Ação Docente 2.1
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  cols21 <- data %>% 
+    select(P211:P214)
+  media21 <- mean(unlist(cols21), na.rm=TRUE)
+  
+  media22 <- mean(unlist(cols22 <- data %>%
+                           select(P221:P228)), na.rm=TRUE)
+  media23 <- mean(unlist(cols22 <- data %>%
+                           select(P231:P234)), na.rm=TRUE)
+  
+  df <- data.frame(medias = c(media21, media22, media23),
+                   dimensoes = c("Atitude Profissional", "Gestão Didática", "Processo Avaliativo"))
+  
+  mediasAutoavDoc <<- graficoMedia(df, df$medias, df$dimensoes, "Figura 7 - Médias por Subdimensão da Autoavaliação da Ação Docente")
+  print(mediasAutoavDoc)
+})
+``` 
+
+### Médias por dimensao (DOCENTE)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  media11 <- mean(unlist(cols22 <- data %>%
+                           select(P111:P117)), na.rm=TRUE)
+  media21 <- mean(unlist(cols22 <- data %>%
+                           select(P211:P234)), na.rm=TRUE)
+  media31 <- mean(unlist(cols22 <- data %>%
+                           select(P311:P314)), na.rm=TRUE)
+  df <- data.frame(medias = c(media11, media21, media31),
+                   dimensoes = c("Avaliação da Turma", "Autoavaliação da Ação Docente", "Instalações Físicas"))
+  
+  df$dimensoes <- factor(df$dimensoes, levels = c("Avaliação da Turma", "Autoavaliação da Ação Docente", "Instalações Físicas"))
+  
+  df <- df[order(df$dimensoes), ]
+  
+  mediaGeralDoc <<- graficoMedia(df, df$medias, df$dimensoes, "Figura 2 - Médias por dimensão (Docente)")
+})
+```
+
+
+Column {data-width=400}
+-------------------------------------
+### Contagem 1.1 base docente
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  contagem11 <- lapply(data [, 10:16], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem11, alternativas)
+  
+  dfDisc <- data.frame(
+    questoes = rep(c("1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  contagem11Doc <<- graficoContagem(dfDisc, dfDisc$questoes, dfDisc$conceito, dfDisc$valores, "Figura 14 – Proporções de respostas dadas aos itens relacionados à Avaliação da Turma")
+  print(contagem11Doc)
+})
+```
+
+### Contagem 2.1 base docente
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  contagem21 <- lapply(data [, 17:20], table)
+  contagem22 <- lapply(data [, 21:28], table)
+  contagem23 <- lapply(data [, 29:32], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfDoc <- data.frame(subdimensoes = rep(c("Atitude Profissional", "Gestão Didática", "Processo Avaliativo"), each=4),
+                      conceito = rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = 3),
+                      valores = c( calculoPercent(alternativas,contagem21), calculoPercent(alternativas,contagem22), calculoPercent(alternativas,contagem23)))
+  
+  dfDoc$conceito <- factor(dfDoc$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente"))
+  
+  contagem21Doc <<- graficoContagem(dfDoc, dfDoc$subdimensoes, dfDoc$conceito, dfDoc$valores, "Figura 9 – Proporções de respostas dadas por Subdimensão da Autoavaliação da Ação Docente
+")
+  print(contagem21Doc)
+})
+```
+
+### Contagem Geral base docente
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  contagemDisc <- lapply(data [, 10:16], table)
+  contagemDoc <- lapply(data [, 17:32], table)
+  contagemInfra <- lapply(data [, 33:36], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  percentDisc <- calculoPercent(alternativas, contagemDisc)
+  percentDoc <- calculoPercent(alternativas, contagemDoc)
+  percentInfra <- calculoPercent(alternativas, contagemInfra)
+  
+  df <- data.frame(
+    subdimensoes = rep(c("Avaliação da Turma", "Autoavaliação da Ação Docente", "Instalações Físicas"), each = 4),
+    conceito = rep(c("Insuficiente", "Regular", "Bom", "Excelente"), times = 3),
+    valores = c(percentDisc, percentDoc, percentInfra))
+  
+  df$subdimensoes <- factor(df$subdimensoes, levels = c("Avaliação da Turma", "Autoavaliação da Ação Docente", "Instalações Físicas"))
+  
+  df$conceito <- factor(df$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente"))
+  
+  df <- df[order(df$subdimensoes, df$conceito), ]
+  
+  
+  df$conceito <- factor(df$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente"))
+  
+  contagemGeralDoc <<- graficoContagem(df, df$subdimensoes, df$conceito, df$valores, "Figura 4 - Proporções de respostas dadas por Dimensão (Docente)")
+})
+```
+
+
+Gráficos Atitude Profissional {data-orientation=rows}
+================================================================
+Row {data-height=500}
+-------------------------------------
+Column {data-width=50}
+-------------------------------------
+
+## Médias dos itens relacionados à Atitude Profissional (Discente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  mediasDiscente <- colMeans(data[, 44:47])
+  
+  df <- data.frame(medias = mediasDiscente,
+                   questoes = c("2.1.1", "2.1.2", "2.1.3", "2.1.4"))
+  mediasAtProfissionalDi <<- graficoMedia(df, df$medias, df$questoes, "Figura 16 – Médias dos itens relacionados à Atitude Profissional (Discente)")
+  print(mediasAtProfissionalDi)
+})
+``` 
+
+Column {data-width=50}
+-------------------------------------
+## Médias dos itens relacionados à Atitude Profissional (Docente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  mediasDoc <- colMeans(data[, 17:20])
+  
+  df <- data.frame(medias = mediasDoc,
+                   questoes = c("2.1.1", "2.1.2", "2.1.3", "2.1.4"))
+  mediasAtProfissionalDo <<- graficoMedia(df, df$medias, df$questoes,"Figura 17 – Médias dos itens relacionados à Atitude Profissional (Docente)")
+  print(mediasAtProfissionalDo)
+})
+``` 
+
+Row {data-height=500}
+-------------------------------------
+Column {data-width=50}
+-------------------------------------
+## Contagem 2.1 Discente
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  contagem <- lapply(data[, 44:47], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  dfDisc <- data.frame(
+    questoes = rep(c("2.1.1", "2.1.2", "2.1.3", "2.1.4"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  dfDisc <- dfDisc[order(dfDisc$questoes, dfDisc$conceito), ]
+  
+  contagemAtProfissionalDi <<- graficoContagem(dfDisc, dfDisc$questoes, dfDisc$conceito, dfDisc$valores, "Figura 18 – Proporções de respostas dadas aos itens relacionados à Atitude Profissional (Discente)")
+  print(contagemAtProfissionalDi)
+  
+})
+```
+
+Column {data-width=50}
+-------------------------------------
+## Contagem 2.1 Docente
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  contagem <- lapply(data[, 17:20], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  dfDoc <- data.frame(
+    questoes = rep(c("2.1.1", "2.1.2", "2.1.3", "2.1.4"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  dfDoc <- dfDoc[order(dfDoc$questoes, dfDoc$conceito), ]
+  
+  contagemAtProfissionalDoc <<- graficoContagem(dfDoc, dfDoc$questoes, dfDoc$conceito, dfDoc$valores, "Figura 19 – Proporções de respostas dadas aos itens relacionados à Atitude Profissional (Docente)")
+  print(contagemAtProfissionalDoc)
+  
+})
+```
+
+## Boxplot 2.1 Discente
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+renderPlot({
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$disc
+  
+  # Aplicar a função valoresUnicos nos dados filtrados
+  data_filtered <- valoresUnicos(data_filtered, mediap211:mediap214)
+  
+  data_long <- data_filtered %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "dimensao",
+                 values_to = "media")
+  
+  boxplotAtitude <<- graficoBoxplot(data_long, media, dimensao, "Figura 20 – Distribuição das Médias das Avaliações das Turmas/Docentes por Item relacionado à 
+           Atitude Profissional", c("mediap211" = "2.1.1",
+                                    "mediap212" = "2.1.2",
+                                    "mediap213" = "2.1.3",
+                                    "mediap214" = "2.1.4"))
+  print(boxplotAtitude)
+})
+```
+
+
+Gráficos Gestao Didatica {data-orientation=rows}
+================================================================
+Row {data-height=500}
+-------------------------------------
+## Médias dos itens relacionados à Gestão Didática (Discente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  mediasDiscente <- colMeans(data[, 48:55])
+  
+  df <- data.frame(medias = mediasDiscente,
+                   questoes = c("2.2.1", "2.2.2", "2.2.3", "2.2.4","2.2.5", "2.2.6", "2.2.7", "2.2.8"))
+  mediasGestaoDi <<- graficoMedia(df, df$medias, df$questoes,"Figura 21 – Médias dos itens relacionados à Gestão Didática (Discente)")
+  print(mediasGestaoDi)
+})
+``` 
+
+## Médias dos itens relacionados à Gestão Didática (Docente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  mediasDoc <- colMeans(data[, 21:28])
+  
+  df <- data.frame(medias = mediasDoc,
+                   questoes = c("2.2.1", "2.2.2", "2.2.3", "2.2.4","2.2.5", "2.2.6", "2.2.7", "2.2.8"))
+  mediasGestaoDoc <<- graficoMedia(df, df$medias, df$questoes,"Figura 22 – Médias dos itens relacionados à Gestão Didática (Docente)")
+  print(mediasGestaoDoc)
+})
+``` 
+
+
+Row {data-height=500}
+-------------------------------------
+## Contagem Gestão Didática (Discente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  contagem <- lapply(data[, 48:55], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  dfDisc <- data.frame(
+    questoes = rep(c("2.2.1", "2.2.2", "2.2.3", "2.2.4","2.2.5","2.2.6","2.2.7","2.2.8"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  dfDisc <- dfDisc[order(dfDisc$questoes, dfDisc$conceito), ]
+  
+  contagemGestaoDisc <<- graficoContagem(dfDisc, dfDisc$questoes, dfDisc$conceito, dfDisc$valores, "Figura 23 – Proporções de respostas dadas aos itens relacionados à Gestão Didática (Discente)")
+  print(contagemGestaoDisc)
+})
+```
+
+## Contagem Gestão Didática (Docente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  contagem <- lapply(data[, 21:28], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  dfDoc <- data.frame(
+    questoes = rep(c("2.2.1", "2.2.2", "2.2.3", "2.2.4","2.2.5","2.2.6","2.2.7","2.2.8"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  dfDoc <- dfDoc[order(dfDoc$questoes, dfDoc$conceito), ]
+  
+  contagemGestaoDoc <<- graficoContagem(dfDoc, dfDoc$questoes, dfDoc$conceito, dfDoc$valores, "Figura 24 – Proporções de respostas dadas aos itens relacionados à Gestão Didática (Docente)")
+  print(contagemGestaoDoc)
+})
+```
+
+## Boxplot Gestao Didatica
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+renderPlot({
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$disc
+  
+  # Aplicar a função valoresUnicos nos dados filtrados
+  data_filtered <- valoresUnicos(data_filtered, mediap221:mediap228)
+  
+  data_long <- data_filtered %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "dimensao",
+                 values_to = "media")
+  
+  boxplotGestao <<- graficoBoxplot(data_long, media, dimensao, "Figura 25 – Distribuição das Médias das Avaliações das Turmas/Docentes por Item relacionado à 
+           Gestão Didática", c( "mediap221" = "2.2.1",
+                                "mediap222" = "2.2.2",
+                                "mediap223" = "2.2.3",
+                                "mediap224" = "2.2.4",
+                                "mediap225" = "2.2.5",
+                                "mediap226" = "2.2.6",
+                                "mediap227" = "2.2.7",
+                                "mediap228" = "2.2.8"))
+  print(boxplotGestao)
+})
+```
+
+
+Gráficos Processo Avaliativo {data-orientation=rows}
+================================================================
+Row {data-height=500}
+-------------------------------------
+## Médias dos itens relacionados à Processo Avaliativo (Discente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  mediasDiscente <- colMeans(data[, 56:59])
+  
+  df <- data.frame(medias = mediasDiscente,
+                   questoes = c("2.3.1", "2.3.2", "2.3.3", "2.3.4"))
+  mediasProcessoDi <<- graficoMedia(df, df$medias, df$questoes,"Figura 26 – Médias dos itens relacionados ao Processo Avaliativo (Discente)")
+  print(mediasProcessoDi)
+})
+``` 
+
+## Médias dos itens relacionados à Processo Avaliativo (Docente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  mediasDoc <- colMeans(data[, 29:32])
+  
+  df <- data.frame(medias = mediasDoc,
+                   questoes = c("2.3.1", "2.3.2", "2.3.3", "2.3.4"))
+  mediasProcessoDoc <<- graficoMedia(df, df$medias, df$questoes,"Figura 27 – Médias dos itens relacionados ao Processo Avaliativo (Docente)")
+  print(mediasProcessoDoc)
+})
+``` 
+
+Row {data-height=500}
+-------------------------------------
+## Contagem Processo Avaliativo (Discente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  contagem <- lapply(data[, 56:59], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  dfDisc <- data.frame(
+    questoes = rep(c("2.3.1", "2.3.2", "2.3.3", "2.3.4"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  dfDisc <- dfDisc[order(dfDisc$questoes, dfDisc$conceito), ]
+  
+  contagemProcessoDisc <<- graficoContagem(dfDisc, dfDisc$questoes, dfDisc$conceito, dfDisc$valores, "Figura 28 – Proporções de respostas dadas aos itens relacionados ao Processo Avaliativo (Discente)")
+  print(contagemProcessoDisc)
+})
+```
+
+## Contagem Processo Avaliativo (Docente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  contagem <- lapply(data[, 29:32], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  dfDoc <- data.frame(
+    questoes = rep(c("2.3.1", "2.3.2", "2.3.3", "2.3.4"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  dfDoc <- dfDoc[order(dfDoc$questoes, dfDoc$conceito), ]
+  
+  contagemProcessoDoc <<- graficoContagem(dfDoc, dfDoc$questoes, dfDoc$conceito, dfDoc$valores, "Figura 29 – Proporções de respostas dadas aos itens relacionados ao Processo Avaliativo (Docente)")
+  print(contagemProcessoDoc)
+})
+```
+
+## Boxplot Processo Avaliativo
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+renderPlot({
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$disc
+  
+  # Aplicar a função valoresUnicos nos dados filtrados
+  data_filtered <- valoresUnicos(data_filtered, mediap231:mediap234)
+  
+  data_long <- data_filtered %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "dimensao",
+                 values_to = "media")
+  
+  boxplotProcesso <<-  graficoBoxplot(data_long, media, dimensao, "Figura 30 – Distribuição das Médias das Avaliações das Turmas/Docentes por Item relacionado ao 
+           Processo Avaliativo", c("mediap231" = "2.3.1",
+                                   "mediap232" = "2.3.2",
+                                   "mediap233" = "2.3.3",
+                                   "mediap234" = "2.3.4"))
+  print(boxplotProcesso)
+})
+```
+
+
+Gráficos Instalação Física {data-orientation=rows}
+================================================================
+Row {data-height=500}
+-------------------------------------
+## Médias dos itens relacionados às Instalações Físicas (Discente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  mediasDiscente <- colMeans(data[, 60:63])
+  
+  df <- data.frame(medias = mediasDiscente,
+                   questoes = c("3.1.1", "3.1.2", "3.1.3", "3.1.4"))
+  mediasInfraDisc <<- graficoMedia(df, df$medias, df$questoes,"Figura 31 – Médias dos itens relacionados às Instalações físicas (Discente)")
+  print(mediasInfraDisc)
+})
+``` 
+
+## Médias dos itens relacionados às Instalações Físicas (Docente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  mediasDoc <- colMeans(data[, 33:36])
+  
+  df <- data.frame(medias = mediasDoc,
+                   questoes = c("3.1.1", "3.1.2", "3.1.3", "3.1.4"))
+  mediasInfraDoc <<- graficoMedia(df, df$medias, df$questoes,"Figura 32 – Médias dos itens relacionados às Instalações físicas (Docente)")
+  print(mediasInfraDoc)
+})
+```
+
+Row {data-height=500}
+-------------------------------------
+## Contagem Instalações Físicas (Discente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$disc
+  
+  contagem <- lapply(data[, 60:63], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  dfDisc <- data.frame(
+    questoes = rep(c("3.1.1", "3.1.2", "3.1.3", "3.1.4"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  dfDisc <- dfDisc[order(dfDisc$questoes, dfDisc$conceito), ]
+  
+  contagemInfraDisc <<- graficoContagem(dfDisc, dfDisc$questoes, dfDisc$conceito, dfDisc$valores, "Figura 33 – Proporções de respostas dadas aos itens relacionados às Instalações físicas (Discente)")
+  print(contagemInfraDisc)
+})
+```
+
+## Contagem Instalações Físicas (Docente)
+```{r}
+renderPlot({
+  data <- filtered_data()
+  data <- data$doc
+  
+  contagem <- lapply(data[, 33:36], table)
+  
+  alternativas <- c(1,2,3,4)
+  
+  dfLong <- percentPorItem(contagem, alternativas)
+  
+  dfDoc <- data.frame(
+    questoes = rep(c("3.1.1", "3.1.2", "3.1.3", "3.1.4"), each = 4),
+    conceito = factor(dfLong$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente")),
+    valores = dfLong$valores)
+  
+  dfDoc <- dfDoc[order(dfDoc$questoes, dfDoc$conceito), ]
+  
+  contagemInfraDoc <<- graficoContagem(dfDoc, dfDoc$questoes, dfDoc$conceito, dfDoc$valores, "Figura 34 – Proporções de respostas dadas aos itens relacionados às Instalações físicas (Docente)")
+  print(contagemInfraDoc)
+})
+```
+
+## Boxplot Instalações Físicas
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+renderPlot({
+  data_filtered <- filtered_data()
+  data_filtered <- data_filtered$disc
+  
+  # Aplicar a função valoresUnicos nos dados filtrados
+  data_filtered <- valoresUnicos(data_filtered, mediap311:mediap314)
+  
+  data_long <- data_filtered %>%
+    pivot_longer(cols = starts_with("mediap"),
+                 names_to = "dimensao",
+                 values_to = "media")
+  
+  boxplotInfra <<- graficoBoxplot(data_long, media, dimensao, "Figura 35 – Distribuição das Médias das Avaliações das Turmas/Docentes por Item relacionado às 
+           Instalações Físicas", c("mediap311" = "3.1.1",
+                                   "mediap312" = "3.1.2",
+                                   "mediap313" = "3.1.3",
+                                   "mediap314" = "3.1.4"))
+  print(boxplotInfra)
+})
+```
