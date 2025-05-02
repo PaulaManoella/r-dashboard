@@ -19,12 +19,11 @@ library(reshape2)
 library(DT)
 
 #base discente
-dataSource <- "C:/Users/pmano/OneDrive/Documentos/avalia/avalia_23-09.xlsx" 
-baseDiscente <- read_excel(dataSource) 
+dataSource <- "avalia_2024.xlsx" 
+baseDiscente <- read_excel(dataSource, sheet="D_DISC_2024-2") 
 
-#base docente 
-sourceDocente <- "C:/Users/pmano/OneDrive/Documentos/avalia/avalia_docente_24-09.xlsx"
-baseDocente <- read_excel(sourceDocente)
+#base docente
+baseDocente <- read_excel(dataSource, sheet="D_DOC_2024-2")
 
 ### FUNÇÕES
 
@@ -74,7 +73,7 @@ percentPorItem <- function(contagem, alternativas) {
     
     return(percentuaisCompletos) 
   })
-
+  
   df <- data.frame(percentQuestoes)
   
   dfLong <- reshape2::melt(df, varnames = "questoes", value.name = "valores")
@@ -378,8 +377,8 @@ renderPlot({
   unicosDoc <- valoresUnicos(data_filtered, mediap211:mediap234)
   unicosInfra <- valoresUnicos(data_filtered, mediap311:mediap314)
   
-#   as variavies 'long_[...]' contem a seguinte estrutura: ID | dimensao | media ,onde
-#   ID é a coluna ID na base de dados, dimensão (Autoavaliação Discente, Ação Docente ou Instalações Físicas) e media são as medias para o boxplot
+  #   as variavies 'long_[...]' contem a seguinte estrutura: ID | dimensao | media ,onde
+  #   ID é a coluna ID na base de dados, dimensão (Autoavaliação Discente, Ação Docente ou Instalações Físicas) e media são as medias para o boxplot
   
   long_disc <- unicosDisc %>%
     pivot_longer(cols = starts_with("mediap"),
@@ -426,7 +425,8 @@ renderPlot({
   data <- data$disc
   
   
-  contagem <- lapply(data[, 37:43], table)
+  contagem <- lapply(data[, c("P111","P112","P113","P114","P115","P116","P117")], table)
+  #37:43]
   
   alternativas <- c(1,2,3,4)
   
@@ -612,7 +612,7 @@ renderPlot({
   data_filtered <- data_filtered$disc
   
   intervalo_colunas <- data_filtered %>%
-    select(A:R)
+    select("4.1.1.A":"4.1.1.Q")
   
   #armazenando o nome das colunas 
   colunas_nomes <- colnames(intervalo_colunas)
@@ -652,7 +652,7 @@ renderPlot({
   data_filtered <- data_filtered$doc
   
   intervalo_colunas <- data_filtered %>%
-    select(A:P)
+    select("4.1.1.A":"4.1.1.P")
   
   colunas_nomes <- colnames(intervalo_colunas)
   
@@ -681,7 +681,6 @@ renderPlot({
 
 
 
-
 base docente
 ================================================================
 Column {data-width=600}
@@ -692,13 +691,18 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  mediasAvTurma <- colMeans(data[, 10:16])
+  colunas <- as.character(111:117)
+  mediasAvTurma <- colMeans(data[, colunas], na.rm=TRUE)
+  
+  print("medias av turma")
+  print(mediasAvTurma)
+  str(data[, colunas])
   
   df <- data.frame(medias = mediasAvTurma,
                    questoes = c("1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7"))
   
-  mediasAvTurma <<- graficoMedia(df, df$medias, df$questoes, "Figura 12 – Médias dos itens relacionados à Avaliação da Turma")
-  print(mediasAvTurma)
+  mediasAvTurmaG <<- graficoMedia(df, df$medias, df$questoes, "Figura 12 – Médias dos itens relacionados à Avaliação da Turma")
+  print(mediasAvTurmaG)
 })
 ```
 
@@ -708,14 +712,16 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  cols21 <- data %>% 
-    select(P211:P214)
-  media21 <- mean(unlist(cols21), na.rm=TRUE)
+  #cols21 <- data %>% 
+  # select(P211:P214)
   
-  media22 <- mean(unlist(cols22 <- data %>%
-                           select(P221:P228)), na.rm=TRUE)
-  media23 <- mean(unlist(cols22 <- data %>%
-                           select(P231:P234)), na.rm=TRUE)
+  cols21 <- as.character(211:214)
+  cols22 <- as.character(221:228)
+  cols23 <- as.character(231:234)
+  
+  media21 <- mean(unlist(data [, cols21]), na.rm=TRUE)
+  media22 <- mean(unlist(data [, cols22]), na.rm=TRUE)
+  media23 <- mean(unlist(data [, cols23]), na.rm=TRUE)
   
   df <- data.frame(medias = c(media21, media22, media23),
                    dimensoes = c("Atitude Profissional", "Gestão Didática", "Processo Avaliativo"))
@@ -731,12 +737,21 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  media11 <- mean(unlist(cols22 <- data %>%
-                           select(P111:P117)), na.rm=TRUE)
-  media21 <- mean(unlist(cols22 <- data %>%
-                           select(P211:P234)), na.rm=TRUE)
-  media31 <- mean(unlist(cols22 <- data %>%
-                           select(P311:P314)), na.rm=TRUE)
+  cols11 <- as.character(111:117)
+  cols21 <- as.character(c(211:214, 221:228, 231:234))
+  cols31 <- as.character(311:314)
+  
+  
+  media11 <- mean(unlist(data [, cols11]), na.rm=TRUE)
+  
+  media21 <- mean(unlist(data [, cols21]), na.rm=TRUE)
+  
+  media31 <- mean(unlist(data [, cols31]), na.rm=TRUE)
+  
+  print(media11)
+  print(media21)
+  print(media31)
+  
   df <- data.frame(medias = c(media11, media21, media31),
                    dimensoes = c("Avaliação da Turma", "Autoavaliação da Ação Docente", "Instalações Físicas"))
   
@@ -745,6 +760,7 @@ renderPlot({
   df <- df[order(df$dimensoes), ]
   
   mediaGeralDoc <<- graficoMedia(df, df$medias, df$dimensoes, "Figura 2 - Médias por dimensão (Docente)")
+  print(mediaGeralDoc)
 })
 ```
 
@@ -757,7 +773,8 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  contagem11 <- lapply(data [, 10:16], table)
+  colunas <- as.character(111:117)
+  contagem11 <- lapply(data[, colunas], table)
   
   alternativas <- c(1,2,3,4)
   
@@ -779,9 +796,9 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  contagem21 <- lapply(data [, 17:20], table)
-  contagem22 <- lapply(data [, 21:28], table)
-  contagem23 <- lapply(data [, 29:32], table)
+  contagem21 <- lapply(data [, as.character(211:214)], table)
+  contagem22 <- lapply(data [, as.character(221:228)], table)
+  contagem23 <- lapply(data [, as.character(231:234)], table)
   
   alternativas <- c(1,2,3,4)
   
@@ -803,9 +820,9 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  contagemDisc <- lapply(data [, 10:16], table)
-  contagemDoc <- lapply(data [, 17:32], table)
-  contagemInfra <- lapply(data [, 33:36], table)
+  contagemDisc <- lapply(data [, as.character(111:117)], table)
+  contagemDoc <- lapply(data [, as.character(c(211:214, 221:228, 231:234))], table)
+  contagemInfra <- lapply(data [, as.character(311:314)], table)
   
   alternativas <- c(1,2,3,4)
   
@@ -824,10 +841,10 @@ renderPlot({
   
   df <- df[order(df$subdimensoes, df$conceito), ]
   
-  
   df$conceito <- factor(df$conceito, levels = c("Excelente", "Bom", "Regular", "Insuficiente"))
   
   contagemGeralDoc <<- graficoContagem(df, df$subdimensoes, df$conceito, df$valores, "Figura 4 - Proporções de respostas dadas por Dimensão (Docente)")
+  print(contagemGeralDoc)
 })
 ```
 
@@ -862,7 +879,7 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  mediasDoc <- colMeans(data[, 17:20])
+  mediasDoc <- colMeans(data[, as.character(211:214)], na.rm=TRUE)
   
   df <- data.frame(medias = mediasDoc,
                    questoes = c("2.1.1", "2.1.2", "2.1.3", "2.1.4"))
@@ -908,7 +925,7 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  contagem <- lapply(data[, 17:20], table)
+  contagem <- lapply(data[, as.character(211:214)], table)
   
   alternativas <- c(1,2,3,4)
   
@@ -961,7 +978,9 @@ renderPlot({
   data <- filtered_data()
   data <- data$disc
   
-  mediasDiscente <- colMeans(data[, 48:55])
+  colunasTeste <<- c("P221","P222","P223","P224","P225","P226","P227","P228")
+  
+  mediasDiscente <- colMeans(data[, c("P221","P222","P223","P224","P225","P226","P227","P228")], na.rm=TRUE)
   
   df <- data.frame(medias = mediasDiscente,
                    questoes = c("2.2.1", "2.2.2", "2.2.3", "2.2.4","2.2.5", "2.2.6", "2.2.7", "2.2.8"))
@@ -976,7 +995,9 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  mediasDoc <- colMeans(data[, 21:28])
+  mediasDoc <- colMeans(data[, as.character(221:228)], na.rm=TRUE)
+  print("mediasDoc")
+  print(mediasDoc)
   
   df <- data.frame(medias = mediasDoc,
                    questoes = c("2.2.1", "2.2.2", "2.2.3", "2.2.4","2.2.5", "2.2.6", "2.2.7", "2.2.8"))
@@ -994,7 +1015,7 @@ renderPlot({
   data <- filtered_data()
   data <- data$disc
   
-  contagem <- lapply(data[, 48:55], table)
+  contagem <- lapply(data[, colunasTeste], table)
   
   alternativas <- c(1,2,3,4)
   
@@ -1074,7 +1095,7 @@ renderPlot({
   data <- filtered_data()
   data <- data$disc
   
-  mediasDiscente <- colMeans(data[, 56:59])
+  mediasDiscente <- colMeans(data[, c("P231","P232","P233","P234")], na.rm=TRUE)
   
   df <- data.frame(medias = mediasDiscente,
                    questoes = c("2.3.1", "2.3.2", "2.3.3", "2.3.4"))
@@ -1089,7 +1110,7 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  mediasDoc <- colMeans(data[, 29:32])
+  mediasDoc <- colMeans(data[, as.character(231:234)], na.rm=TRUE)
   
   df <- data.frame(medias = mediasDoc,
                    questoes = c("2.3.1", "2.3.2", "2.3.3", "2.3.4"))
@@ -1182,7 +1203,7 @@ renderPlot({
   data <- filtered_data()
   data <- data$disc
   
-  mediasDiscente <- colMeans(data[, 60:63])
+  mediasDiscente <- colMeans(data[, c("P311","P312","P313","P314")], na.rm=TRUE)
   
   df <- data.frame(medias = mediasDiscente,
                    questoes = c("3.1.1", "3.1.2", "3.1.3", "3.1.4"))
@@ -1197,7 +1218,7 @@ renderPlot({
   data <- filtered_data()
   data <- data$doc
   
-  mediasDoc <- colMeans(data[, 33:36])
+  mediasDoc <- colMeans(data[, as.character(311:314)], na.rm=TRUE)
   
   df <- data.frame(medias = mediasDoc,
                    questoes = c("3.1.1", "3.1.2", "3.1.3", "3.1.4"))
