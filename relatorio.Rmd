@@ -41,19 +41,19 @@ curso <- params$curso
 
 \newpage \pagenumbering{arabic} \setcounter{page}{1}
 \begin{center}
-\fontsize{15pt}{20pt}\selectfont \textbf{APRESENTAÇÃO DO RELATÓRIO AVALIA 2023.4}
+\fontsize{15pt}{20pt}\selectfont \textbf{APRESENTAÇÃO DO RELATÓRIO AVALIA 2024.2}
 \end{center}
 
 \begin{justify}
 \fontsize{12pt}{15pt}\selectfont
 O Programa de Autoavaliação dos Cursos de Graduação da UFPA (AVALIA-Graduação) é de responsabilidade da Pró-Reitoria de Ensino de Graduação (PROEG) em parceria com a Pró-Reitoria de Planejamento e Desenvolvimento Institucional (PROPLAN) e com o Centro de Registro e Indicadores Acadêmicos (CIAC), seguindo as diretrizes do Sistema Nacional de Avaliação da Educação Superior (SINAES) e do Plano de Desenvolvimento Institucional (PDI) 2016-2025.
 
-   O Programa AVALIA-Graduação revela o olhar interno dos sujeitos acadêmicos que cons-troem diariamente o ensino de Graduação na UFPA, sendo uma oportunidade de contribuir para as transformações qualitativas nas condições de ensino e aprendizagem, em cada período letivo, visando a garantia da qualidade da educação superior.
-   
-   No presente relatório, a PROEG divulga os Resultados do AVALIA-Graduação- Período 2023.4- apresentando a análise de três (03) dimensões inter-relacionadas (perfil do corpo docente, instalações físicas e organização didático-pedagógica) e fornecendo subsídios ao aprimoramento da gestão acadêmica, efetivamente a partir do enfrentamento das fragilidades e fortalecimento das potencialidades dos cursos, em busca de construir a qualidade do ensino da graduação.
-   
-   Para avaliar as respostas dos discentes em relação a sua autoavaliação, ação docente e infraestrutura, utilizou-se o gráfico de barras para avaliar o percentual de respostas, assim como o gráfico de box-plot das médias das avaliações por disciplina/docente para cada item do questionário, que variam de 1 a 4. O box-plot indica o comportamento da distribuição das avaliações feitas pelos discentes e visa trazer uma medida de tendência central, assim como identificar avaliações atípicas (Outliers) dentro do conjunto de dados, em comparação com as demais respostas obtidas.
-  
+O Programa AVALIA-Graduação revela o olhar interno dos sujeitos acadêmicos que cons-troem diariamente o ensino de Graduação na UFPA, sendo uma oportunidade de contribuir para as transformações qualitativas nas condições de ensino e aprendizagem, em cada período letivo, visando a garantia da qualidade da educação superior.
+
+No presente relatório, a PROEG divulga os Resultados do AVALIA-Graduação- Período 2023.4- apresentando a análise de três (03) dimensões inter-relacionadas (perfil do corpo docente, instalações físicas e organização didático-pedagógica) e fornecendo subsídios ao aprimoramento da gestão acadêmica, efetivamente a partir do enfrentamento das fragilidades e fortalecimento das potencialidades dos cursos, em busca de construir a qualidade do ensino da graduação.
+
+Para avaliar as respostas dos discentes em relação a sua autoavaliação, ação docente e infraestrutura, utilizou-se o gráfico de barras para avaliar o percentual de respostas, assim como o gráfico de box-plot das médias das avaliações por disciplina/docente para cada item do questionário, que variam de 1 a 4. O box-plot indica o comportamento da distribuição das avaliações feitas pelos discentes e visa trazer uma medida de tendência central, assim como identificar avaliações atípicas (Outliers) dentro do conjunto de dados, em comparação com as demais respostas obtidas.
+
 \end{justify}
 
 
@@ -124,18 +124,18 @@ acaoDoc <- data_filtered %>% select(mediap211:mediap234)
 instFisica <- data_filtered %>% select(mediap311:mediap314)
 
 longDisc <- autoAvDisc %>%
-    pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
+  pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
 
 longDoc <- acaoDoc %>%
-    pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
+  pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
 
 longInfra <- instFisica %>%
-    pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
+  pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
 
 statsDisc <- summary(longDisc$medias)
 statsDoc <- summary(longDoc$medias)
 statsInfra <- summary(longInfra$medias)
-  
+
 infoDisc <- as.numeric(statsDisc[c("Min.","1st Qu.", "Median", "Mean", "3rd Qu.", "Max.")])
 infoDoc <- as.numeric(statsDoc[c("Min.","1st Qu.", "Median", "Mean", "3rd Qu.", "Max.")])
 infoInfra <- as.numeric(statsInfra[c("Min.","1st Qu.", "Median", "Mean", "3rd Qu.", "Max.")])
@@ -174,18 +174,18 @@ gestaoDidat <- data_filtered %>% select(mediap221:mediap228)
 instFisica <- data_filtered %>% select(mediap231:mediap234)
 
 longAtProfi <- atProfi %>%
-    pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
+  pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
 
 longGestao <- gestaoDidat %>%
-    pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
+  pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
 
 longProcesso <- instFisica %>%
-    pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
+  pivot_longer(cols = starts_with("mediap"), names_to = "autoav", values_to = "medias")
 
 statsDisc <- summary(longAtProfi$medias)
 statsDoc <- summary(longGestao$medias)
 statsInfra <- summary(longProcesso$medias)
-  
+
 infoAtitude <- as.numeric(statsDisc[c("Min.","1st Qu.", "Median", "Mean", "3rd Qu.", "Max.")])
 infoGestao <- as.numeric(statsDoc[c("Min.","1st Qu.", "Median", "Mean", "3rd Qu.", "Max.")])
 infoProcesso <- as.numeric(statsInfra[c("Min.","1st Qu.", "Median", "Mean", "3rd Qu.", "Max.")])
@@ -206,7 +206,7 @@ knitr::kable(tabela3, format = "latex", caption = "Estatísticas descritivas das
 
 ```{r, echo = FALSE, fig.width = 8.7, fig.height = 5, fig.align = 'center'}
 print(mediasDisc)
-print(mediasAvTurma)
+print(mediasAvTurmaG)
 ```
 
 \newpage \switchtolandscape
